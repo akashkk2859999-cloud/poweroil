@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Participant {
+  id                  Int         @id @default(autoincrement())
+  participantCode     String      @unique
+  slug                String      @unique
+  fullName            String
+  phone               String
+  email               String?
+  state               String
+  city                String
+  ageConfirmed        Boolean     @default(false)
+  socialPlatform      String
+  socialHandle        String
+  socialPostUrl       String      @unique
+  dishName            String?
+  caption             String?
+  status              String      @default("PENDING_REVIEW")
+  rejectionReason     String?
+  consentContentUsage Boolean     @default(false)
+  acceptedTerms       Boolean     @default(false)
+  marketingOptIn      Boolean     @default(false)
+  voteCount           Int         @default(0)
+  approvedAt          DateTime?
+  rejectedAt          DateTime?
+  suspendedAt         DateTime?
+  disqualifiedAt      DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  votes               Vote[]
+  moderationLogs      ModerationLog[]
+
+  @@index([status])
+  @@index([phone])
+  @@index([state])
+  @@index([createdAt])
+}
+
+model Vote {
+  id                Int       @id @default(autoincrement())
+  participantId     Int
+  voterName         String?
+  voterPhone        String?
+  voterEmail        String?
+  voterIp           String?
+  userAgent         String?
+  deviceFingerprint String?
+  voteStatus        String    @default("VALID")
+  fraudScore        Int       @default(0)
+  createdAt         DateTime  @default(now())
+
+  participant       Participant @relation(fields: [participantId], references: [id])
+
+  @@index([participantId])
+  @@index([voterPhone])
+  @@index([voterEmail])
+  @@index([voterIp])
+  @@index([createdAt])
+}
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("MODERATOR")
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  moderationLogs ModerationLog[]
+}
+
+model ModerationLog {
+  id             Int      @id @default(autoincrement())
+  participantId  Int
+  adminUserId    Int
+  action         String
+  comment        String?
+  previousStatus String?
+  newStatus      String?
+  createdAt      DateTime @default(now())
+
+  participant    Participant @relation(fields: [participantId], references: [id])
+  adminUser      AdminUser   @relation(fields: [adminUserId], references: [id])
+
+  @@index([participantId])
+  @@index([adminUserId])
+}
+
+model CampaignSetting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique
+  settingValue String
+  updatedAt    DateTime @updatedAt
+}
+
+model FraudFlag {
+  id            Int      @id @default(autoincrement())
+  participantId Int?
+  voteId        Int?
+  flagType      String
+  severity      String   @default("MEDIUM")
+  description   String?
+  status        String   @default("OPEN")
+  createdAt     DateTime @default(now())
+  resolvedAt    DateTime?
+
+  @@index([participantId])
+  @@index([voteId])
+  @@index([status])
+}
